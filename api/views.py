@@ -29,6 +29,7 @@ class FishTypeListCreateView(generics.ListCreateAPIView):
 class FishTypeListView(generics.ListAPIView):
     queryset = FishType.objects.all()
     serializer_class = FishTypeSerializer
+    permission_classes = [AllowAny]
     
 @api_view(['DELETE'])
 def delete_fish_type(request, pk):
@@ -43,11 +44,12 @@ def delete_fish_type(request, pk):
 class WeighInCreateView(generics.CreateAPIView):
     queryset = WeighIn.objects.all()
     serializer_class = WeighInSerializer
+    permission_classes = [AllowAny]
     
 class WeighInListAPIView(generics.ListAPIView):
     queryset = WeighIn.objects.all()
     serializer_class = WeighInHistorySerializer
-    
+    permission_classes = [AllowAny]
 
 class FishTotalKilosView(APIView):
     def get(self, request, *args, **kwargs):
@@ -75,3 +77,11 @@ class FishTotalKilosView(APIView):
             })
 
         return Response(response_data, status=status.HTTP_200_OK)
+    
+class UserDetailView(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
