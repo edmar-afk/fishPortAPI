@@ -52,6 +52,7 @@ class WeighInListAPIView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
 class FishTotalKilosView(APIView):
+    permission_classes = [AllowAny]
     def get(self, request, *args, **kwargs):
         # Get the current date
         today = timezone.now().date()
@@ -72,7 +73,7 @@ class FishTotalKilosView(APIView):
             total_kg = item['total_kg']
             fish_type = FishType.objects.get(id=fish_id)
             response_data.append({
-                'fish': fish_type.name,  # or any other field from FishType
+                'fish': fish_type.name, 
                 'total_kg': total_kg
             })
 
