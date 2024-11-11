@@ -1,13 +1,13 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import FishType, WeighIn
+from .models import FishType, WeighIn, FishingPermit
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'email', 'first_name', 'last_name', 'is_superuser', 'is_staff')
+        fields = ('id', 'username', 'password', 'email', 'first_name', 'last_name', 'is_superuser', 'is_staff')
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -45,3 +45,18 @@ class FishCaugthReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = WeighIn
         fields = ['fish', 'kg']
+        
+
+class FishingPermitSerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=True)  # Accepts the owner ID
+    
+    class Meta:
+        model = FishingPermit
+        fields = [
+            'owner', 'owner_name', 'address', 'home_port', 'vessel_name', 'vessel_type', 
+            'color', 'service_type', 'vessel_description', 'length', 'breadth', 'depth', 
+            'draught', 'gross', 'net', 'engine', 'serial_num', 'horse_power', 'cylinder_num', 
+            'engine_num', 'crew_num', 'coast_guard_num', 'mfvr_num', 'or_num', 'date_issued', 'amount', 'fishing_gear_used'
+        ]
+        read_only_fields = ['id']  # Make only the `id` field read-only
+

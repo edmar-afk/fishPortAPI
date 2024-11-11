@@ -17,4 +17,15 @@ urlpatterns = [
     path('weighins-list/', views.WeighInListAPIView.as_view(), name='weighin-list'),
     
     path('fish-totals/', views.FishTotalKilosView.as_view(), name='fish_totals'),
+    
+    path('register-fishing-permit/<int:user_id>/', views.FishingPermitCreateAPIView.as_view(), name='register-fishing_permit'),
+    path('fishing-permit/latest/<int:userId>/', views.LatestFishingPermitAPIView.as_view(), name='latest_fishing_permit'),
+    
+    path('non-superuser-count/', views.NonSuperUserCountAPIView.as_view(), name='non-superuser-count'),
+    path('fishermen/', views.FishermanListView.as_view(), name='fishermen-list'),
+    path('fishing-permits/latest/<int:userId>/', views.LatestFishingPermitAPIView.as_view(), name='latest-fishing-permit'),
+    path('fishing-permit/<int:userId>/', views.FishingPermitDetailsView.as_view(), name='fishing-permit-details'),
+    
+    path('total-weight-today/', views.TotalWeightTodayView.as_view(), name='total_weight_for_today'),
+    path('total-price-today/', views.TotalPriceTodayView.as_view(), name='total-price-today'),
 ]

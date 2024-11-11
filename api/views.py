@@ -3,7 +3,7 @@ from rest_framework import generics, permissions, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework import status
-from .serializers import UserSerializer, FishTypeSerializer, WeighInSerializer, WeighInHistorySerializer, FishCaugthReportSerializer
+from .serializers import UserSerializer, FishTypeSerializer, WeighInSerializer, WeighInHistorySerializer, FishCaugthReportSerializer, FishingPermitSerializer
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,10 +11,11 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.views import View
 from rest_framework.decorators import api_view
-from .models import FishType, WeighIn
+from .models import FishType, WeighIn, FishingPermit
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import datetime
+from django.utils.timezone import now
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = UserSerializer
@@ -86,3 +87,106 @@ class UserDetailView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+
+
+class NonSuperUserCountAPIView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, *args, **kwargs):
+        # Count users who are not superusers
+        non_superuser_count = User.objects.filter(is_superuser=False).count()
+        return Response({'non_superuser_count': non_superuser_count})
+
+
+class FishermanListView(generics.ListAPIView):
+    permission_classes = [AllowAny]
+    
+    queryset = User.objects.filter(is_superuser=False)
+    serializer_class = UserSerializer
+  
+    def get_queryset(self):
+        # Optionally, you can customize this method to filter the users
+        return User.objects.filter(is_superuser=False)
+    
+
+class FishingPermitCreateAPIView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request, user_id):
+        # Retrieve the User object based on the provided user_id
+        try:
+            owner = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Include the owner object and set owner_name to user.first_name in the form data
+        data = request.data.copy()
+        data['owner'] = owner.id  # Set the owner to the user's ID
+        data['owner_name'] = owner.first_name  # Automatically set owner_name to first_name
+
+        # Print the submitted data for debugging
+        print("Data being submitted:", data)
+
+        # Serialize the data
+        serializer = FishingPermitSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()  # Save the FishingPermit instance
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            # Print and return validation errors for debugging
+            print("Validation errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+class LatestFishingPermitAPIView(generics.RetrieveAPIView):
+    serializer_class = FishingPermitSerializer
+    permission_classes = [AllowAny]
+    
+    def get_object(self):
+        user_id = self.kwargs['userId']
+        # Fetch the latest permit for the user if it exists
+        return FishingPermit.objects.filter(owner_id=user_id).last()
+    
+
+class FishingPermitDetailsView(generics.RetrieveAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = FishingPermitSerializer
+
+    def get_object(self):
+        user_id = self.kwargs.get("userId")
+        # Get the latest fishing permit for the user, ordered by ID in descending order
+        permit = FishingPermit.objects.filter(owner__id=user_id).order_by('-id').first()
+        if permit is None:
+            self.raise_exception()  # Raise a 404 error if no permit is found
+        return permit
+    
+    
+class TotalWeightTodayView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        today = now().date()  # Get the current date
+        
+        # Query WeighIn for today only and aggregate the total kg
+        total_weight = WeighIn.objects.filter(
+            date_weighin__date=today
+        ).aggregate(total_weight=Sum('kg'))['total_weight'] or 0
+        
+        return Response({"total_weight_today": total_weight})
+    
+
+class TotalPriceTodayView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        today = now().date()  # Get the current date
+        
+        # Query WeighIn for today only and aggregate the total price
+        total_price = WeighIn.objects.filter(
+            date_weighin__date=today
+        ).aggregate(total_price=Sum('total_price'))['total_price'] or 0
+        
+        return Response({"total_price_today": total_price})
