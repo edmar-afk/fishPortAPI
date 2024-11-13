@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
 urlpatterns = [
-    path('register/', views.RegisterView.as_view(), name='register'),
+    path('register/', views.register_user, name='register'),
     path('token/', TokenObtainPairView.as_view(), name='get_token'),
     path('token/refresh', TokenRefreshView.as_view(), name='refresh_token'),
     path('user/', views.UserDetailView.as_view(), name='user_detail'),
@@ -28,4 +28,8 @@ urlpatterns = [
     
     path('total-weight-today/', views.TotalWeightTodayView.as_view(), name='total_weight_for_today'),
     path('total-price-today/', views.TotalPriceTodayView.as_view(), name='total-price-today'),
+    
+    
+    path('weighin/<str:fish_name>/', views.WeighInByFishView.as_view(), name='weighin-by-fish'),
+    
 ]

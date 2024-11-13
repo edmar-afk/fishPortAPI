@@ -3,21 +3,22 @@ from django.contrib.auth.models import User
 from .models import FishType, WeighIn, FishingPermit
 
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
-
     class Meta:
         model = User
-        fields = ('id', 'username', 'password', 'email', 'first_name', 'last_name', 'is_superuser', 'is_staff')
+        fields = ['id', 'username', 'password', 'first_name', 'is_superuser']
+        extra_kwargs = {'is_superuser': {'read_only': True}}  # Prevents `is_superuser` from being set via the API
 
     def create(self, validated_data):
-        user = User.objects.create_user(
+        user = User(
             username=validated_data['username'],
-            password=validated_data['password'],
-            email=validated_data.get('email', ''),
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', '')
+            first_name=validated_data['first_name'],
+            is_superuser=False  # Set default value for is_superuser
         )
+        user.set_password(validated_data['password'])  # Hash the password
+        user.save()
         return user
+        
+
 
 class FishTypeSerializer(serializers.ModelSerializer):
     class Meta:

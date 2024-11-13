@@ -16,10 +16,35 @@ from django.db.models import Sum
 from django.utils import timezone
 from datetime import datetime
 from django.utils.timezone import now
+from django.contrib.auth.hashers import make_password
+import logging
+from rest_framework.decorators import permission_classes
+logger = logging.getLogger(__name__)
+from datetime import timedelta
+from django.db.models import Count  # Import Count for aggregation
+from rest_framework.exceptions import NotFound
 
-class RegisterView(generics.CreateAPIView):
-    serializer_class = UserSerializer
 
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    if request.method == 'POST':
+        # Print the incoming request data to the console
+        print("Received data:", request.data)
+        
+        # Continue with your serializer logic
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        # If there are errors, print them too
+        print("Validation errors:", serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
 class FishTypeListCreateView(generics.ListCreateAPIView):
     queryset = FishType.objects.all()
     serializer_class = FishTypeSerializer
@@ -190,3 +215,25 @@ class TotalPriceTodayView(APIView):
         ).aggregate(total_price=Sum('total_price'))['total_price'] or 0
         
         return Response({"total_price_today": total_price})
+    
+    
+    
+class WeighInByFishView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request, *args, **kwargs):
+        fish_name = self.kwargs['fish_name']
+        current_date = timezone.now().date()
+        
+        try:
+            fish = FishType.objects.get(name=fish_name)
+        except FishType.DoesNotExist:
+            raise NotFound(detail="Fish type not found.")
+        
+        weighin_queryset = WeighIn.objects.filter(fish=fish, date_weighin__date=current_date)
+        total_kg = weighin_queryset.aggregate(total_kg=Sum('kg'))['total_kg'] or 0
+        
+        return Response({
+            "fish_name": fish_name,
+            "total_kg_today": total_kg
+        })
