@@ -31,5 +31,5 @@ urlpatterns = [
     
     
     path('weighin/<str:fish_name>/', views.WeighInByFishView.as_view(), name='weighin-by-fish'),
-    
+    path('users/delete/<int:id>/', views.UserDeleteView.as_view(), name='user-delete'),
 ]

@@ -237,3 +237,33 @@ class WeighInByFishView(generics.GenericAPIView):
             "fish_name": fish_name,
             "total_kg_today": total_kg
         })
+        
+        
+        
+class UserDeleteView(APIView):
+    """
+    API view to delete a user based on their ID.
+    """
+    def delete(self, request, *args, **kwargs):
+        # Retrieve the user ID from the URL
+        user_id = kwargs.get('id')
+
+        # Try to get the user object
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if the user is allowed to delete (optional)
+        # For example, prevent deleting superusers or the current authenticated user
+        if user.is_superuser or user == request.user:
+            return Response(
+                {"detail": "You cannot delete this user."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Delete the user
+        user.delete()
+        return Response({"detail": "User deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
