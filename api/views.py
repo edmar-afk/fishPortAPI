@@ -3,7 +3,7 @@ from rest_framework import generics, permissions, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework import status
-from .serializers import UserSerializer, FishTypeSerializer, WeighInSerializer, WeighInHistorySerializer, FishCaugthReportSerializer, FishingPermitSerializer
+from .serializers import UserSerializer, FishTypeSerializer, WeighInSerializer, WeighInHistorySerializer, VesselRegistrationSerializer, FishingPermitSerializer
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,7 +11,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.views import View
 from rest_framework.decorators import api_view
-from .models import FishType, WeighIn, FishingPermit
+from .models import FishType, WeighIn, FishingPermit, VesselRegistration
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import datetime
@@ -23,8 +23,9 @@ logger = logging.getLogger(__name__)
 from datetime import timedelta
 from django.db.models import Count  # Import Count for aggregation
 from rest_framework.exceptions import NotFound
-
-
+from rest_framework.decorators import action
+from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError, NotFound  # Import exceptions
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -108,7 +109,7 @@ class FishTotalKilosView(APIView):
 class UserDetailView(generics.RetrieveAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_object(self):
         return self.request.user
@@ -188,7 +189,58 @@ class FishingPermitDetailsView(generics.RetrieveAPIView):
             self.raise_exception()  # Raise a 404 error if no permit is found
         return permit
     
+
+
+class VesselRegistrationCreateAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, user_id):
+        # Retrieve the User object based on the provided user_id
+        try:
+            owner = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Include the owner object in the form data
+        data = request.data.copy()
+        data['owner'] = owner.id  # Set the owner to the user's ID
+
+        # Print the submitted data for debugging
+        print("Data being submitted:", data)
+
+        # Serialize the data
+        serializer = VesselRegistrationSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()  # Save the VesselRegistration instance
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            # Print and return validation errors for debugging
+            print("Validation errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LatestVesselRegAPIView(generics.RetrieveAPIView):
+    serializer_class = VesselRegistrationSerializer
+    permission_classes = [AllowAny]
     
+    def get_object(self):
+        user_id = self.kwargs['userId']
+        # Fetch the latest permit for the user if it exists
+        return VesselRegistration.objects.filter(owner_id=user_id).last()
+    
+class VesselRegistrationDetailsView(generics.RetrieveAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = VesselRegistrationSerializer
+
+    def get_object(self):
+        vessel_id = self.kwargs.get("vesselId")  # Extract `vesselId` from URL
+        vessel = VesselRegistration.objects.filter(id=vessel_id).first()
+        if vessel is None:
+            raise NotFound("Vessel not found.")  # Use NotFound exception for 404
+        return vessel
+    
+
+
 class TotalWeightTodayView(APIView):
     permission_classes = [AllowAny]
 
@@ -241,6 +293,7 @@ class WeighInByFishView(generics.GenericAPIView):
         
         
 class UserDeleteView(APIView):
+    permission_classes = [AllowAny]
     """
     API view to delete a user based on their ID.
     """

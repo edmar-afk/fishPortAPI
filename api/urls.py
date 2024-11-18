@@ -32,4 +32,10 @@ urlpatterns = [
     
     path('weighin/<str:fish_name>/', views.WeighInByFishView.as_view(), name='weighin-by-fish'),
     path('users/delete/<int:id>/', views.UserDeleteView.as_view(), name='user-delete'),
+    
+    
+     path('vessel-registration/<int:user_id>/', views.VesselRegistrationCreateAPIView.as_view(), name='vessel-registration-create'),
+     path('vessel-registration/latest/<int:userId>/', views.LatestVesselRegAPIView.as_view(), name='latest-vessel-registration'),
+     path('vessel-registrationDetail/<int:vesselId>/', views.VesselRegistrationDetailsView.as_view(), name='vessel-registration-details'),
+
 ]

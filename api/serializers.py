@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import FishType, WeighIn, FishingPermit
+from .models import FishType, WeighIn, FishingPermit, VesselRegistration
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -61,3 +61,33 @@ class FishingPermitSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id']  # Make only the `id` field read-only
 
+
+
+class VesselRegistrationSerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=True)  # Accepts the owner ID
+    
+    class Meta:
+        model = VesselRegistration
+        fields = [
+            'id',
+            'owner',
+            'builder_name',
+            'year_built',
+            'place_built',
+            'former_vessel_name',
+            'former_owner',
+            'hull_materials',
+            'color',
+            'length',
+            'width',
+            'depth',
+            'draught',
+            'gross_tonnage',
+            'net_tonnage',
+            'engine_make',
+            'cycle',
+            'horsepower',
+            'cylinder_number',
+            'number_of_engine',
+        ]
+        read_only_fields = ['id']  # To ensure the ID is read-only
