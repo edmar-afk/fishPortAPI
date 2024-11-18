@@ -53,12 +53,8 @@ class FishTypeListCreateView(generics.ListCreateAPIView):
     
 
 # New view for listing FishTypes only
-class FishTypeListView(generics.ListAPIView):
-    queryset = FishType.objects.all()
-    serializer_class = FishTypeSerializer
-    permission_classes = [AllowAny]
-    
 @api_view(['DELETE'])
+@permission_classes([AllowAny]) 
 def delete_fish_type(request, pk):
     try:
         fish_type = FishType.objects.get(pk=pk)
