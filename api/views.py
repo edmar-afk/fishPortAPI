@@ -33,28 +33,34 @@ def register_user(request):
     if request.method == 'POST':
         # Print the incoming request data to the console
         print("Received data:", request.data)
-        
+
         # Continue with your serializer logic
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
+
         # If there are errors, print them too
         print("Validation errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
-    
+
+
+
 class FishTypeListCreateView(generics.ListCreateAPIView):
     queryset = FishType.objects.all()
     serializer_class = FishTypeSerializer
     permission_classes = [AllowAny]
-    
+
+
+# New view for listing FishTypes only
+class FishTypeListView(generics.ListAPIView):
+    queryset = FishType.objects.all()
+    serializer_class = FishTypeSerializer
+    permission_classes = [AllowAny]
 
 # New view for listing FishTypes only
 @api_view(['DELETE'])
-@permission_classes([AllowAny]) 
+@permission_classes([AllowAny])
 def delete_fish_type(request, pk):
     try:
         fish_type = FishType.objects.get(pk=pk)
@@ -68,7 +74,7 @@ class WeighInCreateView(generics.CreateAPIView):
     queryset = WeighIn.objects.all()
     serializer_class = WeighInSerializer
     permission_classes = [AllowAny]
-    
+
 class WeighInListAPIView(generics.ListAPIView):
     queryset = WeighIn.objects.all()
     serializer_class = WeighInHistorySerializer
@@ -79,7 +85,7 @@ class FishTotalKilosView(APIView):
     def get(self, request, *args, **kwargs):
         # Get the current date
         today = timezone.now().date()
-        
+
         # Filter weigh-ins for the current date and aggregate total kg per fish type
         fish_totals = (
             WeighIn.objects
@@ -88,7 +94,7 @@ class FishTotalKilosView(APIView):
             .annotate(total_kg=Sum('kg'))
             .order_by('fish')
         )
-        
+
         # Prepare the response data
         response_data = []
         for item in fish_totals:
@@ -96,16 +102,16 @@ class FishTotalKilosView(APIView):
             total_kg = item['total_kg']
             fish_type = FishType.objects.get(id=fish_id)
             response_data.append({
-                'fish': fish_type.name, 
+                'fish': fish_type.name,
                 'total_kg': total_kg
             })
 
         return Response(response_data, status=status.HTTP_200_OK)
-    
+
 class UserDetailView(generics.RetrieveAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         return self.request.user
@@ -123,18 +129,18 @@ class NonSuperUserCountAPIView(APIView):
 
 class FishermanListView(generics.ListAPIView):
     permission_classes = [AllowAny]
-    
+
     queryset = User.objects.filter(is_superuser=False)
     serializer_class = UserSerializer
-  
+
     def get_queryset(self):
         # Optionally, you can customize this method to filter the users
         return User.objects.filter(is_superuser=False)
-    
+
 
 class FishingPermitCreateAPIView(APIView):
     permission_classes = [AllowAny]
-    
+
     def post(self, request, user_id):
         # Retrieve the User object based on the provided user_id
         try:
@@ -166,12 +172,12 @@ class FishingPermitCreateAPIView(APIView):
 class LatestFishingPermitAPIView(generics.RetrieveAPIView):
     serializer_class = FishingPermitSerializer
     permission_classes = [AllowAny]
-    
+
     def get_object(self):
         user_id = self.kwargs['userId']
         # Fetch the latest permit for the user if it exists
         return FishingPermit.objects.filter(owner_id=user_id).last()
-    
+
 
 class FishingPermitDetailsView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
@@ -184,7 +190,7 @@ class FishingPermitDetailsView(generics.RetrieveAPIView):
         if permit is None:
             self.raise_exception()  # Raise a 404 error if no permit is found
         return permit
-    
+
 
 
 class VesselRegistrationCreateAPIView(APIView):
@@ -218,12 +224,12 @@ class VesselRegistrationCreateAPIView(APIView):
 class LatestVesselRegAPIView(generics.RetrieveAPIView):
     serializer_class = VesselRegistrationSerializer
     permission_classes = [AllowAny]
-    
+
     def get_object(self):
         user_id = self.kwargs['userId']
         # Fetch the latest permit for the user if it exists
         return VesselRegistration.objects.filter(owner_id=user_id).last()
-    
+
 class VesselRegistrationDetailsView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     serializer_class = VesselRegistrationSerializer
@@ -234,7 +240,7 @@ class VesselRegistrationDetailsView(generics.RetrieveAPIView):
         if vessel is None:
             raise NotFound("Vessel not found.")  # Use NotFound exception for 404
         return vessel
-    
+
 
 
 class TotalWeightTodayView(APIView):
@@ -242,52 +248,52 @@ class TotalWeightTodayView(APIView):
 
     def get(self, request):
         today = now().date()  # Get the current date
-        
+
         # Query WeighIn for today only and aggregate the total kg
         total_weight = WeighIn.objects.filter(
             date_weighin__date=today
         ).aggregate(total_weight=Sum('kg'))['total_weight'] or 0
-        
+
         return Response({"total_weight_today": total_weight})
-    
+
 
 class TotalPriceTodayView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
         today = now().date()  # Get the current date
-        
+
         # Query WeighIn for today only and aggregate the total price
         total_price = WeighIn.objects.filter(
             date_weighin__date=today
         ).aggregate(total_price=Sum('total_price'))['total_price'] or 0
-        
+
         return Response({"total_price_today": total_price})
-    
-    
-    
+
+
+
 class WeighInByFishView(generics.GenericAPIView):
     permission_classes = [AllowAny]
-    
+
     def get(self, request, *args, **kwargs):
         fish_name = self.kwargs['fish_name']
         current_date = timezone.now().date()
-        
+
         try:
             fish = FishType.objects.get(name=fish_name)
         except FishType.DoesNotExist:
             raise NotFound(detail="Fish type not found.")
-        
+
         weighin_queryset = WeighIn.objects.filter(fish=fish, date_weighin__date=current_date)
         total_kg = weighin_queryset.aggregate(total_kg=Sum('kg'))['total_kg'] or 0
-        
+
         return Response({
             "fish_name": fish_name,
             "total_kg_today": total_kg
         })
-        
-        
-        
+
+
+
 class UserDeleteView(APIView):
     permission_classes = [AllowAny]
     """
@@ -316,3 +322,39 @@ class UserDeleteView(APIView):
         # Delete the user
         user.delete()
         return Response({"detail": "User deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+    
+    
+    
+    
+class GrantFishingPermitView(APIView):
+    permission_classes = [AllowAny]
+    def patch(self, request, permitId):
+        # Fetch the fishing permit object or return 404 if not found
+        fishing_permit = get_object_or_404(FishingPermit, id=permitId)
+        
+        # Update the status field
+        fishing_permit.status = 'Granted'
+        fishing_permit.save()
+        
+        # Serialize the updated object
+        serializer = FishingPermitSerializer(fishing_permit)
+        
+        # Return the serialized data
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+class GrantVesselRegView(APIView):
+    permission_classes = [AllowAny]
+    def patch(self, request, vesselId):
+        # Fetch the fishing permit object or return 404 if not found
+        vessel_registration = get_object_or_404(VesselRegistration, id=vesselId)
+        
+        # Update the status field
+        vessel_registration.status = 'Granted'
+        vessel_registration.save()
+        
+        # Serialize the updated object
+        serializer = VesselRegistrationSerializer(vessel_registration)
+        
+        # Return the serialized data
+        return Response(serializer.data, status=status.HTTP_200_OK)

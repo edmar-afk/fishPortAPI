@@ -43,6 +43,8 @@ class VesselRegistration(models.Model):
     horsepower = models.TextField(blank=True)
     cylinder_number = models.TextField(blank=True)
     number_of_engine = models.TextField(blank=True)
+    status = models.TextField(default='Pending')
+    amount = models.TextField(default='900')
    
 class FishingPermit(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fishing_permits')
@@ -75,8 +77,10 @@ class FishingPermit(models.Model):
     date_issued = models.DateField(blank=True)
     amount = models.TextField(blank=True)
     fishing_gear_used = models.TextField(blank=True)
+    status = models.TextField(default='Pending')
     def __str__(self):
         return f"Fishing Permit for {self.vessel_name} owned by {self.owner_name}"
+
 
 
 

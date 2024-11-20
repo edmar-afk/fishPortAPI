@@ -34,8 +34,10 @@ urlpatterns = [
     path('users/delete/<int:id>/', views.UserDeleteView.as_view(), name='user-delete'),
     
     
-     path('vessel-registration/<int:user_id>/', views.VesselRegistrationCreateAPIView.as_view(), name='vessel-registration-create'),
-     path('vessel-registration/latest/<int:userId>/', views.LatestVesselRegAPIView.as_view(), name='latest-vessel-registration'),
-     path('vessel-registrationDetail/<int:vesselId>/', views.VesselRegistrationDetailsView.as_view(), name='vessel-registration-details'),
+    path('vessel-registration/<int:user_id>/', views.VesselRegistrationCreateAPIView.as_view(), name='vessel-registration-create'),
+    path('vessel-registration/latest/<int:userId>/', views.LatestVesselRegAPIView.as_view(), name='latest-vessel-registration'),
+    path('vessel-registrationDetail/<int:vesselId>/', views.VesselRegistrationDetailsView.as_view(), name='vessel-registration-details'),
 
+    path('fishing-permits/<int:permitId>/grant/', views.GrantFishingPermitView.as_view(), name='grant-fishing-permit'),
+    path('vessel-registration/<int:vesselId>/grant/', views.GrantVesselRegView.as_view(), name='grant-vessel-registration'),
 ]
