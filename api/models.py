@@ -14,9 +14,9 @@ class FishType(models.Model):
 
 class WeighIn(models.Model):
     fish = models.ForeignKey(FishType, on_delete=models.CASCADE)
-    price_per_kilo = models.TextField()
+    price_per_kilo = models.TextField(blank=True, null=True)
     kg = models.TextField()
-    total_price = models.TextField()
+    total_price = models.TextField(blank=True, null=True)
     date_weighin = models.DateTimeField(auto_now_add=True)
 
 class FishermenRegistration(models.Model):
@@ -25,6 +25,9 @@ class FishermenRegistration(models.Model):
 
 class VesselRegistration(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='vessel_registrations')
+    vessel_name = models.TextField(blank=True)
+    service_type = models.TextField(blank=True)
+    home_port = models.TextField(blank=True)
     builder_name = models.TextField(blank=True)
     year_built = models.DateField(blank=True, null=True)  # `null=True` is needed for DateField
     place_built = models.TextField(blank=True)

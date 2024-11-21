@@ -46,4 +46,9 @@ urlpatterns = [
     
     path('fishing-permit-income/', views.TotalAmountGrantedFishingPermits.as_view(), name='fishing-permit-income'),
     path('vessel-registration-income/', views.TotalAmountGrantedVesselRegistrations.as_view(), name='vessel-registration-income'),
+    
+    
+    path("fishing-permits/<int:permit_id>/docx/", views.download_fishing_permit, name="download_fishing_permit"),
+    
+    path('vessel-registrations/<int:owner_id>/', views.VesselRegistrationListByOwner.as_view(), name='vessel-registrations-by-owner'),
 ]

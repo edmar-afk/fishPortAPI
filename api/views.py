@@ -26,6 +26,153 @@ from rest_framework.exceptions import NotFound
 from rest_framework.decorators import action
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError, NotFound  # Import exceptions
+import os
+from django.conf import settings
+from docx import Document
+from django.http import HttpResponse
+from io import BytesIO
+
+
+def generate_fishing_permit_docx(permit):
+    # Debugging to check the state of the permit
+    print("Generating DOCX for permit:", permit)
+
+    # Build the path to the template file
+    template_path = os.path.join(settings.BASE_DIR, 'FISHING-PERMIT.docx')
+
+    # Ensure the file exists
+    if not os.path.exists(template_path):
+        raise FileNotFoundError(f"Template not found: {template_path}")
+
+    # Load the template document
+    doc = Document(template_path)
+
+    # Handle paragraphs, replacing placeholders in each run
+    for paragraph in doc.paragraphs:
+        # Loop through each run in the paragraph
+        for run in paragraph.runs:
+            # Check if the run contains a placeholder
+            if '{' in run.text and '}' in run.text:
+                print(f"Replacing placeholders in run: {run.text}")
+                
+                # Print values of the fields for debugging
+                print(f"Service type: {permit.service_type}")
+                print(f"Coast Guard Number: {permit.coast_guard_num}")
+                print(f"MFVR Number: {permit.mfvr_num}")
+                print(f"OR Number: {permit.or_num}")
+                print(f"Date Issued: {permit.date_issued}")
+                print(f"Fishing Gear Used: {permit.fishing_gear_used}")
+
+                run.text = run.text.format(
+                    owner_name=permit.owner_name,
+                    address=permit.address,
+                    homeport=permit.home_port,
+                    vessel_name=permit.vessel_name,
+                    vessel_type=permit.vessel_type,
+                    color=permit.color,       
+                    vessel_description=permit.vessel_description,
+                    length=permit.length,
+                    breadth=permit.breadth,
+                    depth=permit.depth,
+                    gross=permit.gross,
+                    net=permit.net,
+                    engine=permit.engine,
+                    serial_num=permit.serial_num,
+                    horse_power=permit.horse_power,
+                    cylinder_num=permit.cylinder_num,
+                    engine_num=permit.engine_num,
+                    crew_num=permit.crew_num,
+                    amount=permit.amount,
+                     
+                    # below here is not displaying
+                    service_type=permit.service_type,
+                    coast_guard_num=permit.coast_guard_num,
+                    mfvr_num=permit.mfvr_num,
+                    or_num=permit.or_num,
+                    date_issued=permit.date_issued.strftime('%Y-%m-%d') if permit.date_issued else '',
+                    fishing_gear_used=permit.fishing_gear_used,
+                )
+
+    # Handle tables in the document
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        # Debugging: print the text of each run in the table cell
+                        print(f"Checking table cell run: {run.text}")
+                        
+                        # Replace placeholders in table cells
+                        if '{' in run.text and '}' in run.text:
+                            print(f"Replacing placeholders in table cell: {run.text}")
+                            
+                            # Print values of the fields for debugging
+                            print(f"Service type: {permit.service_type}")
+                            print(f"Coast Guard Number: {permit.coast_guard_num}")
+                            print(f"MFVR Number: {permit.mfvr_num}")
+                            print(f"OR Number: {permit.or_num}")
+                            print(f"Date Issued: {permit.date_issued}")
+                            print(f"Fishing Gear Used: {permit.fishing_gear_used}")
+
+                            run.text = run.text.format(
+                                owner_name=permit.owner_name,
+                                address=permit.address,
+                                homeport=permit.home_port,
+                                vessel_name=permit.vessel_name,
+                                vessel_type=permit.vessel_type,
+                                color=permit.color,
+                                vessel_description=permit.vessel_description,
+                                length=permit.length,
+                                breadth=permit.breadth,
+                                depth=permit.depth,
+                                gross=permit.gross,
+                                net=permit.net,
+                                engine=permit.engine,
+                                serial_num=permit.serial_num,
+                                horse_power=permit.horse_power,
+                                cylinder_num=permit.cylinder_num,
+                                engine_num=permit.engine_num,
+                                crew_num=permit.crew_num,
+                                amount=permit.amount,
+                                
+                                
+                                # below here is not displaying
+                                service_type=permit.service_type,
+                                coast_guard_num=permit.coast_guard_num,
+                                mfvr_num=permit.mfvr_num,
+                                or_num=permit.or_num,
+                                date_issued=permit.date_issued.strftime('%Y-%m-%d') if permit.date_issued else 'none',
+                                fishing_gear_used=permit.fishing_gear_used,
+                            )
+
+    # Save to an in-memory file
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)  # Rewind the buffer to the start so it can be read
+
+    # Create an HTTP response to download the file
+    response = HttpResponse(
+        buffer,
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+    response['Content-Disposition'] = f'attachment; filename=Fishing-Permit-{permit.owner_name}.docx'
+
+    return response
+
+def download_fishing_permit(request, permit_id):
+    # Fetch the fishing permit object
+    permit = get_object_or_404(FishingPermit, id=permit_id)
+
+    # Generate and return the DOCX response
+    return generate_fishing_permit_docx(permit)
+
+
+
+
+
+
+
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -454,3 +601,35 @@ class TotalAmountGrantedVesselRegistrations(APIView):
         return Response({
             'total_amount_active': total_amount
         }, status=status.HTTP_200_OK)
+        
+        
+class UserDeleteAPIView(APIView):
+    permission_classes = [AllowAny]  # Ensuring the user is authenticated before deleting
+
+    def delete(self, request, *args, **kwargs):
+        user_id = kwargs.get('id')
+        try:
+            user = User.objects.get(id=user_id)
+            user.delete()
+            return Response({'detail': 'User deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        
+        
+
+class VesselRegistrationListByOwner(APIView):
+    permission_classes = [AllowAny]  # Add permission if needed
+    
+    def get(self, request, owner_id, format=None):
+        # Filter VesselRegistration by owner_id
+        registrations = VesselRegistration.objects.filter(owner_id=owner_id)
+        
+        # If no records found, return a 404 error
+        if not registrations:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Serialize the list of IDs
+        registration_ids = registrations.values_list('id', flat=True)
+        
+        return Response({"registration_ids": list(registration_ids)}, status=status.HTTP_200_OK)

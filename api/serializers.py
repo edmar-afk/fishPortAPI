@@ -71,6 +71,9 @@ class VesselRegistrationSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'owner',
+            'vessel_name',
+            'service_type',
+            'home_port',
             'builder_name',
             'year_built',
             'place_built',
