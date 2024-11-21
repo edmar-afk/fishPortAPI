@@ -44,7 +44,7 @@ class VesselRegistration(models.Model):
     cylinder_number = models.TextField(blank=True)
     number_of_engine = models.TextField(blank=True)
     status = models.TextField(default='Pending')
-    amount = models.TextField(default='900')
+    amount = models.TextField(default='554')
    
 class FishingPermit(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fishing_permits')

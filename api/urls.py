@@ -40,4 +40,10 @@ urlpatterns = [
 
     path('fishing-permits/<int:permitId>/grant/', views.GrantFishingPermitView.as_view(), name='grant-fishing-permit'),
     path('vessel-registration/<int:vesselId>/grant/', views.GrantVesselRegView.as_view(), name='grant-vessel-registration'),
+    
+    path('permit/status/<int:ownerId>/', views.FishingPermitStatusView.as_view(), name='permit-status'),
+    path('vessel/status/<int:ownerId>/', views.VesselRegistrationStatusView.as_view(), name='vessel-status'),
+    
+    path('fishing-permit-income/', views.TotalAmountGrantedFishingPermits.as_view(), name='fishing-permit-income'),
+    path('vessel-registration-income/', views.TotalAmountGrantedVesselRegistrations.as_view(), name='vessel-registration-income'),
 ]

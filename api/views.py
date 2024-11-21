@@ -358,3 +358,99 @@ class GrantVesselRegView(APIView):
         
         # Return the serialized data
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    
+
+class FishingPermitStatusView(APIView):
+    permission_classes = [AllowAny]
+    """
+    API view to check the latest status of a fishing permit by ownerId.
+    """
+    def get(self, request, ownerId):
+        # Validate that the owner exists
+        owner = get_object_or_404(User, id=ownerId)
+
+        # Fetch the latest permit for the given owner
+        latest_permit = FishingPermit.objects.filter(owner=owner).order_by('-id').first()
+
+        if latest_permit:
+            return Response({
+                "ownerId": ownerId,
+                "owner_name": owner.get_full_name(),  # Assuming `get_full_name` exists
+                "permit": {
+                    "id": latest_permit.id,
+                    "vessel_name": latest_permit.vessel_name,
+                    "status": latest_permit.status,
+                    "date_issued": latest_permit.date_issued,
+                }
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "ownerId": ownerId,
+                "owner_name": owner.get_full_name(),
+                "message": "No permits found for this owner."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+            
+
+class VesselRegistrationStatusView(APIView):
+    permission_classes = [AllowAny]
+    """
+    API view to check the latest status of vessel registrations by ownerId.
+    """
+    def get(self, request, ownerId):
+        # Validate that the owner exists
+        owner = get_object_or_404(User, id=ownerId)
+
+        # Fetch the latest vessel registration for the given owner
+        latest_vessel = VesselRegistration.objects.filter(owner=owner).order_by('-id').first()
+
+        if latest_vessel:
+            return Response({
+                "ownerId": ownerId,
+                "owner_name": owner.get_full_name(),  # Assuming `get_full_name` exists
+                "vessel": {
+                    "id": latest_vessel.id,
+                    "builder_name": latest_vessel.builder_name,
+                    "year_built": latest_vessel.year_built,
+                    "status": latest_vessel.status,
+                    "amount": latest_vessel.amount,
+                }
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "ownerId": ownerId,
+                "owner_name": owner.get_full_name(),
+                "message": "No vessel registrations found for this owner."
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+            
+class TotalAmountGrantedFishingPermits(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, *args, **kwargs):
+        # Filter fishing permits with status 'Granted' and sum the 'amount' field
+        total_amount = FishingPermit.objects.filter(status='Granted').aggregate(total_amount=Sum('amount'))['total_amount']
+        
+        # If no permits are found with the 'Granted' status, set total_amount to 0
+        if total_amount is None:
+            total_amount = 0
+
+        # Return the total amount in the response
+        return Response({
+            'total_amount_granted': total_amount
+        }, status=status.HTTP_200_OK)
+        
+class TotalAmountGrantedVesselRegistrations(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, *args, **kwargs):
+        # Filter VesselRegistrations with status 'Active' and sum the 'amount' field
+        total_amount = VesselRegistration.objects.filter(status='Granted').aggregate(total_amount=Sum('amount'))['total_amount']
+        
+        # If no registrations are found with the 'Active' status, set total_amount to 0
+        if total_amount is None:
+            total_amount = 0
+
+        # Return the total amount in the response
+        return Response({
+            'total_amount_active': total_amount
+        }, status=status.HTTP_200_OK)
