@@ -1,11 +1,11 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import FishType, WeighIn, FishingPermit, VesselRegistration
+from .models import FishType, WeighIn, FishingPermit, VesselRegistration, ExpirationDate
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'password', 'first_name', 'is_superuser']
+        fields = ['id', 'username', 'password', 'first_name', 'is_superuser', 'date_joined']
         extra_kwargs = {'is_superuser': {'read_only': True}}  # Prevents `is_superuser` from being set via the API
 
     def create(self, validated_data):
@@ -98,3 +98,10 @@ class VesselRegistrationSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']  # To ensure the ID is read-only
         
         
+class ExpirationDateSerializer(serializers.ModelSerializer):
+    vessel_reg = VesselRegistration()
+
+    class Meta:
+        model = ExpirationDate
+        fields = ['id', 'vessel_reg', 'date_registered', 'date_expired']
+       

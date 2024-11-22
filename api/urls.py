@@ -51,4 +51,11 @@ urlpatterns = [
     path("fishing-permits/<int:permit_id>/docx/", views.download_fishing_permit, name="download_fishing_permit"),
     
     path('vessel-registrations/<int:owner_id>/', views.VesselRegistrationListByOwner.as_view(), name='vessel-registrations-by-owner'),
+
+    path('users/<int:userId>/', views.UserProfileView.as_view(), name='user-detail'),
+    path('users/<int:userId>/edit/', views.UserProfileUpdateView.as_view(), name='user-edit'),
+
+
+    path('upload-expiration-date/<int:vesselid>/', views.ExpirationDateUploadView.as_view(), name='upload-expiration-date'),
+    path('expiration-dates/<int:vessel_id>/', views.ExpirationDateByVesselIdView.as_view(), name='expiration-dates-by-vessel-id'),
 ]

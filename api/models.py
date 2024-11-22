@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator
+from datetime import timedelta
+from django.utils.timezone import now
 
 class Fisherman(models.Model):
     name = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -48,7 +50,15 @@ class VesselRegistration(models.Model):
     number_of_engine = models.TextField(blank=True)
     status = models.TextField(default='Pending')
     amount = models.TextField(default='554')
-   
+
+
+class ExpirationDate(models.Model):
+    vessel_reg = models.ForeignKey('VesselRegistration', on_delete=models.CASCADE)
+    date_registered = models.DateField(auto_now_add=True)  # Automatically set when created
+    date_expired = models.DateField(blank=True)  # This will be set in the save method
+
+    
+
 class FishingPermit(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fishing_permits')
     owner_name = models.CharField(max_length=255)

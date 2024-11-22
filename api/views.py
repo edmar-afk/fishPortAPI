@@ -3,7 +3,7 @@ from rest_framework import generics, permissions, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework import status
-from .serializers import UserSerializer, FishTypeSerializer, WeighInSerializer, WeighInHistorySerializer, VesselRegistrationSerializer, FishingPermitSerializer
+from .serializers import UserSerializer, FishTypeSerializer, WeighInSerializer, ExpirationDateSerializer, WeighInHistorySerializer, VesselRegistrationSerializer, FishingPermitSerializer
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,7 +11,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.views import View
 from rest_framework.decorators import api_view
-from .models import FishType, WeighIn, FishingPermit, VesselRegistration
+from .models import FishType, WeighIn, FishingPermit, VesselRegistration, ExpirationDate
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import datetime
@@ -31,7 +31,7 @@ from django.conf import settings
 from docx import Document
 from django.http import HttpResponse
 from io import BytesIO
-
+from django.http import JsonResponse
 
 def generate_fishing_permit_docx(permit):
     # Debugging to check the state of the permit
@@ -633,3 +633,107 @@ class VesselRegistrationListByOwner(APIView):
         registration_ids = registrations.values_list('id', flat=True)
         
         return Response({"registration_ids": list(registration_ids)}, status=status.HTTP_200_OK)
+    
+
+class UserProfileView(View):
+    permission_classes = [AllowAny]
+    def get(self, request, userId):
+        try:
+            user = User.objects.get(pk=userId)
+            user_data = {
+                "id": user.id,
+                "username": user.username,
+                "first_name": user.first_name,
+                "is_superuser": user.is_superuser,
+            }
+            return JsonResponse(user_data)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found."}, status=404)
+        
+        
+class UserProfileUpdateView(APIView):
+    permission_classes = [AllowAny]
+    """
+    API View to update the user's first_name and username.
+    """
+    def put(self, request, userId):
+        user = get_object_or_404(User, pk=userId)
+        data = request.data
+        
+        # Validate and update fields
+        if "username" in data:
+            user.username = data["username"]
+        if "first_name" in data:
+            user.first_name = data["first_name"]
+        
+        user.save()
+        return Response(
+            {
+                "message": "User profile updated successfully.",
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "first_name": user.first_name,
+                },
+            },
+            status=status.HTTP_200_OK
+        )
+        
+
+
+class ExpirationDateUploadView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request, vesselid, *args, **kwargs):
+        try:
+            # Get the VesselRegistration object based on the vesselid
+            vessel_reg = VesselRegistration.objects.get(id=vesselid)
+
+            # Create the ExpirationDate object and automatically set date_expired 30 days after date_registered
+            expiration_date = ExpirationDate(
+                vessel_reg=vessel_reg,
+                date_registered=timezone.now().date(),
+                date_expired=timezone.now().date() + timedelta(days=30)
+            )
+
+            # Save the object
+            expiration_date.save()
+
+            # Serialize the ExpirationDate object
+            serializer = ExpirationDateSerializer(expiration_date)
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        except VesselRegistration.DoesNotExist:
+            return Response({"detail": "Vessel not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    
+
+
+class ExpirationDateByVesselIdView(APIView):
+    permission_classes = [AllowAny]  # Ensure only authenticated users can access
+    """
+    API View to retrieve expiration dates based on vesselId.
+    """
+    def get(self, request, vessel_id):
+        try:
+            # Fetch the vessel registration based on the vessel_id
+            vessel_reg = VesselRegistration.objects.get(id=vessel_id)
+            
+            # Get expiration dates associated with this vessel registration
+            expiration_dates = ExpirationDate.objects.filter(vessel_reg=vessel_reg)
+
+            # Serialize the expiration dates
+            serializer = ExpirationDateSerializer(expiration_dates, many=True)
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except VesselRegistration.DoesNotExist:
+            return Response(
+                {"error": "Vessel registration not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
