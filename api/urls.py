@@ -30,7 +30,9 @@ urlpatterns = [
     path('total-price-today/', views.TotalPriceTodayView.as_view(), name='total-price-today'),
     
     
-    path('weighin/<str:fish_name>/', views.WeighInByFishView.as_view(), name='weighin-by-fish'),
+    path('weighin/<str:fish_name>/<str:dateWeighin>/', views.WeighInByFishView.as_view(), name='weighin-by-fish'),
+
+
     path('users/delete/<int:id>/', views.UserDeleteView.as_view(), name='user-delete'),
     
     
@@ -58,4 +60,9 @@ urlpatterns = [
 
     path('upload-expiration-date/<int:vesselid>/', views.ExpirationDateUploadView.as_view(), name='upload-expiration-date'),
     path('expiration-dates/<int:vessel_id>/', views.ExpirationDateByVesselIdView.as_view(), name='expiration-dates-by-vessel-id'),
+    
+    path('permit-expiration/<int:permitid>/', views.PermitExpirationDateUploadView.as_view(), name='permit-expiration-upload'),
+    path('permit-expiration-dates/<int:permit_id>/', views.ExpirationDateByPermitIdView.as_view(), name='permit-expiration-dates'),
+    
+    path('users/granted-status/', views.GrantedUsersView.as_view(), name='user-granted-status'),
 ]

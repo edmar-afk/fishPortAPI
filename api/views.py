@@ -3,7 +3,7 @@ from rest_framework import generics, permissions, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework import status
-from .serializers import UserSerializer, FishTypeSerializer, WeighInSerializer, ExpirationDateSerializer, WeighInHistorySerializer, VesselRegistrationSerializer, FishingPermitSerializer
+from .serializers import UserSerializer, FishTypeSerializer, WeighInSerializer, PermitExpirationDateSerializer , ExpirationDateSerializer, WeighInHistorySerializer, VesselRegistrationSerializer, FishingPermitSerializer
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,7 +11,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.views import View
 from rest_framework.decorators import api_view
-from .models import FishType, WeighIn, FishingPermit, VesselRegistration, ExpirationDate
+from .models import FishType, WeighIn, FishingPermit, VesselRegistration, ExpirationDate, PermitExpirationDate
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import datetime
@@ -32,6 +32,11 @@ from docx import Document
 from django.http import HttpResponse
 from io import BytesIO
 from django.http import JsonResponse
+from django.utils.dateparse import parse_date
+from django.db.models import Sum, F, FloatField
+from django.db.models.functions import Cast
+from django.db.models import OuterRef, Subquery, Max
+
 
 def generate_fishing_permit_docx(permit):
     # Debugging to check the state of the permit
@@ -398,7 +403,7 @@ class TotalWeightTodayView(APIView):
 
         # Query WeighIn for today only and aggregate the total kg
         total_weight = WeighIn.objects.filter(
-            date_weighin__date=today
+            date_weighin=today  # Directly filter on DateField
         ).aggregate(total_weight=Sum('kg'))['total_weight'] or 0
 
         return Response({"total_weight_today": total_weight})
@@ -412,11 +417,10 @@ class TotalPriceTodayView(APIView):
 
         # Query WeighIn for today only and aggregate the total price
         total_price = WeighIn.objects.filter(
-            date_weighin__date=today
+            date_weighin=today  # Filter directly on the DateField without using __date
         ).aggregate(total_price=Sum('total_price'))['total_price'] or 0
 
         return Response({"total_price_today": total_price})
-
 
 
 class WeighInByFishView(generics.GenericAPIView):
@@ -424,19 +428,37 @@ class WeighInByFishView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         fish_name = self.kwargs['fish_name']
-        current_date = timezone.now().date()
+        date_weighin_param = self.kwargs['dateWeighin']  # Extract 'dateWeighin' from the URL path
 
+        # Validate and parse the date parameter
+        try:
+            filter_date = parse_date(date_weighin_param)  # Parse to a date object
+            if not filter_date:
+                raise ValueError
+        except ValueError:
+            raise ValidationError(detail="Invalid date format. Use YYYY-MM-DD.")
+
+        # Validate fish type
         try:
             fish = FishType.objects.get(name=fish_name)
         except FishType.DoesNotExist:
             raise NotFound(detail="Fish type not found.")
 
-        weighin_queryset = WeighIn.objects.filter(fish=fish, date_weighin__date=current_date)
-        total_kg = weighin_queryset.aggregate(total_kg=Sum('kg'))['total_kg'] or 0
+        # Filter weigh-ins for the specified fish and date
+        weighin_queryset = WeighIn.objects.filter(fish=fish, date_weighin=filter_date)
 
+        # Handle `TextField` to numeric conversion during aggregation
+        total_kg = (
+            weighin_queryset.annotate(kg_as_float=Cast('kg', FloatField()))
+            .aggregate(total_kg=Sum('kg_as_float'))['total_kg']
+            or 0
+        )
+
+        # Return the response
         return Response({
             "fish_name": fish_name,
-            "total_kg_today": total_kg
+            "date": filter_date,
+            "total_kg": total_kg
         })
 
 
@@ -692,7 +714,7 @@ class ExpirationDateUploadView(APIView):
             expiration_date = ExpirationDate(
                 vessel_reg=vessel_reg,
                 date_registered=timezone.now().date(),
-                date_expired=timezone.now().date() + timedelta(days=30)
+                date_expired=timezone.now().date() + timedelta(days=365)
             )
 
             # Save the object
@@ -737,3 +759,129 @@ class ExpirationDateByVesselIdView(APIView):
                 {"error": f"An unexpected error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+            
+            
+
+
+
+class PermitExpirationDateUploadView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, permitid, *args, **kwargs):
+        try:
+            # Get the FishingPermit object based on the permitid
+            permit_reg = FishingPermit.objects.get(id=permitid)
+
+            # Create the PermitExpirationDate object and automatically set date_expired 365 days after date_registered
+            permit_expiration_date = PermitExpirationDate(
+                permit_reg=permit_reg,
+                date_registered=timezone.now().date(),
+                date_expired=timezone.now().date() + timedelta(days=365)
+            )
+
+            # Save the object
+            permit_expiration_date.save()
+
+            # Serialize the PermitExpirationDate object
+            serializer = PermitExpirationDateSerializer(permit_expiration_date)
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        except FishingPermit.DoesNotExist:
+            return Response({"detail": "Fishing Permit not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+class ExpirationDateByPermitIdView(APIView):
+    permission_classes = [AllowAny]
+
+    """
+    API View to retrieve expiration dates based on permitId.
+    """
+    def get(self, request, permit_id):
+        try:
+            # Fetch the FishingPermit based on the permit_id
+            permit_reg = FishingPermit.objects.get(id=permit_id)
+
+            # Get expiration dates associated with this fishing permit
+            expiration_dates = PermitExpirationDate.objects.filter(permit_reg=permit_reg)
+
+            # Serialize the expiration dates
+            serializer = PermitExpirationDateSerializer(expiration_dates, many=True)
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except FishingPermit.DoesNotExist:
+            return Response(
+                {"error": "Fishing permit not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
+
+
+
+
+
+
+
+class GrantedUsersView(APIView):
+    permission_classes = [AllowAny]  # Ensure the endpoint is protected
+
+    def get(self, request, *args, **kwargs):
+        # Get the latest FishingPermit per user with status='Granted'
+        latest_fishing_permits = FishingPermit.objects.filter(
+            owner=OuterRef('owner'), status='Granted'
+        ).order_by('-id')
+        
+        # Use Subquery to get the latest FishingPermit ID for each owner
+        fishing_permit_ids = FishingPermit.objects.filter(
+            id=Subquery(latest_fishing_permits.values('id')[:1])
+        ).values_list('id', flat=True)
+
+        # Get the latest VesselRegistration per user with status='Granted'
+        latest_vessel_registrations = VesselRegistration.objects.filter(
+            owner=OuterRef('owner'), status='Granted'
+        ).order_by('-id')
+        
+        # Use Subquery to get the latest VesselRegistration ID for each owner
+        vessel_registration_ids = VesselRegistration.objects.filter(
+            id=Subquery(latest_vessel_registrations.values('id')[:1])
+        ).values_list('id', flat=True)
+
+        # Get the user IDs that have both latest granted permits and registrations
+        fishing_permit_users = FishingPermit.objects.filter(id__in=fishing_permit_ids).values_list('owner', flat=True)
+        vessel_registration_users = VesselRegistration.objects.filter(id__in=vessel_registration_ids).values_list('owner', flat=True)
+
+        granted_user_ids = set(fishing_permit_users).intersection(set(vessel_registration_users))
+
+        # Fetch User objects
+        users = User.objects.filter(id__in=granted_user_ids)
+        
+        # Serialize the user data with additional fields
+        users_data = []
+        for user in users:
+            # Get the latest FishingPermit status
+            fishing_permit_status = FishingPermit.objects.filter(owner=user.id).order_by('-id').first().status if FishingPermit.objects.filter(owner=user.id).exists() else None
+            
+            # Get the latest VesselRegistration status
+            vessel_registration_status = VesselRegistration.objects.filter(owner=user.id).order_by('-id').first().status if VesselRegistration.objects.filter(owner=user.id).exists() else None
+
+            users_data.append({
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "is_superuser": user.is_superuser,
+                "date_joined": user.date_joined,
+                "fishing_permit_status": fishing_permit_status,
+                "vessel_registration_status": vessel_registration_status,
+            })
+
+        return Response(users_data)

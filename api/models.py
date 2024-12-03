@@ -19,7 +19,7 @@ class WeighIn(models.Model):
     price_per_kilo = models.TextField(blank=True, null=True)
     kg = models.TextField()
     total_price = models.TextField(blank=True, null=True)
-    date_weighin = models.DateTimeField(auto_now_add=True)
+    date_weighin = models.DateField(auto_now_add=True)  
 
 class FishermenRegistration(models.Model):
     name = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fishermen_registrations')
@@ -53,9 +53,10 @@ class VesselRegistration(models.Model):
 
 
 class ExpirationDate(models.Model):
-    vessel_reg = models.ForeignKey('VesselRegistration', on_delete=models.CASCADE)
+    vessel_reg = models.ForeignKey(VesselRegistration, on_delete=models.CASCADE)
     date_registered = models.DateField(auto_now_add=True)  # Automatically set when created
     date_expired = models.DateField(blank=True)  # This will be set in the save method
+
 
     
 
@@ -96,4 +97,7 @@ class FishingPermit(models.Model):
 
 
 
-
+class PermitExpirationDate(models.Model):
+    permit_reg = models.ForeignKey(FishingPermit, on_delete=models.CASCADE)
+    date_registered = models.DateField(auto_now_add=True)  # Automatically set when created
+    date_expired = models.DateField(blank=True)  # This will be set in the save method

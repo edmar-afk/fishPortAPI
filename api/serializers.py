@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import FishType, WeighIn, FishingPermit, VesselRegistration, ExpirationDate
+from .models import FishType, WeighIn, FishingPermit, VesselRegistration, ExpirationDate, PermitExpirationDate
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,4 +104,13 @@ class ExpirationDateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpirationDate
         fields = ['id', 'vessel_reg', 'date_registered', 'date_expired']
+       
+
+class PermitExpirationDateSerializer(serializers.ModelSerializer):
+    permit_reg = FishingPermitSerializer()  # Assuming you have a `FishingPermitSerializer`
+
+    class Meta:
+        model = PermitExpirationDate
+        fields = ['id', 'permit_reg', 'date_registered', 'date_expired']
+
        
