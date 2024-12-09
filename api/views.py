@@ -241,7 +241,7 @@ class FishTotalKilosView(APIView):
         # Filter weigh-ins for the current date and aggregate total kg per fish type
         fish_totals = (
             WeighIn.objects
-            .filter(date_weighin__date=today)
+            .filter(date_weighin=today)
             .values('fish')
             .annotate(total_kg=Sum('kg'))
             .order_by('fish')
@@ -427,8 +427,9 @@ class WeighInByFishView(generics.GenericAPIView):
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
-        fish_name = self.kwargs['fish_name']
-        date_weighin_param = self.kwargs['dateWeighin']  # Extract 'dateWeighin' from the URL path
+        # Extract fish name and date parameter
+        fish_name = self.kwargs.get('fish_name')
+        date_weighin_param = self.kwargs.get('dateWeighin')
 
         # Validate and parse the date parameter
         try:
@@ -449,9 +450,9 @@ class WeighInByFishView(generics.GenericAPIView):
 
         # Handle `TextField` to numeric conversion during aggregation
         total_kg = (
-            weighin_queryset.annotate(kg_as_float=Cast('kg', FloatField()))
-            .aggregate(total_kg=Sum('kg_as_float'))['total_kg']
-            or 0
+            weighin_queryset.annotate(kg_as_float=Cast('kg', FloatField()))  # Cast kg to float
+            .aggregate(total_kg=Sum('kg_as_float'))['total_kg']  # Aggregate the total kg
+            or 0  # Default to 0 if no results
         )
 
         # Return the response
@@ -729,7 +730,6 @@ class ExpirationDateUploadView(APIView):
             return Response({"detail": "Vessel not found."}, status=status.HTTP_404_NOT_FOUND)
 
     
-
 
 class ExpirationDateByVesselIdView(APIView):
     permission_classes = [AllowAny]  # Ensure only authenticated users can access
